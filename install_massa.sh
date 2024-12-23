@@ -190,6 +190,8 @@ menu_loop() {
   on_exit
   [ "${boxes[1]}" = "X" ] && install_node
   [ "${boxes[2]}" = "X" ] && install_deweb
+  [ "${boxes[4]}" = "X" ] && uninstall_node
+  [ "${boxes[5]}" = "X" ] && uninstall_deweb
 }
 
 on_exit() {
@@ -204,14 +206,20 @@ on_start() {
   run_menu
 }
 
-on_start
-
 install_node() {
-  on_exit
   echo "installing node"
 }
 
+uninstall_node() {
+  echo "uninstalling node"
+}
+
 install_deweb() {
-  on_exit
   echo "installing deweb"
 }
+
+uninstall_deweb() {
+  echo "uninstalling deweb"
+}
+
+on_start
