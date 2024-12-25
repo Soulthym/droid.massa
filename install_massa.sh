@@ -266,16 +266,35 @@ install_node() {
   install_proot_distro
 }
 
-uninstall_node() {
-  log "uninstalling node"
-}
-
 install_deweb() {
   log "installing deweb"
 }
 
+uninstall_node() {
+  log "uninstalling node"
+  # ask for confirmation
+  echo "This will delete all your node data."
+  echo "Make sure to backup your wallet before proceeding."
+  echo "Are you sure? [y/N]: "
+  while true; do
+    read -r key
+    case $key in
+      "y"|"Y")
+        break
+        ;;
+      "n"|"N")
+        return
+        ;;
+      *)
+        echo "Invalid input ${key@Q}. Are you sure? [y/n]: "
+    esac
+  done
+  rm -rf "$node_path"
+}
+
 uninstall_deweb() {
   log "uninstalling deweb"
+  rm -rf "$deweb_path"
 }
 
 vm_name="droid.massa"
