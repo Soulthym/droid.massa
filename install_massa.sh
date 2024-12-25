@@ -92,11 +92,6 @@ waitkey() {
   esac
 }
 
-get_cursor_pos() {
-  IFS=';' read -sdrR -p $'\E[6n' ROW COL
-  echo "${ROW#*[}" "${COL}"
-}
-
 draw_line() {
   if [ "$1" -lt 0 ]; then
     local row="$(($(tput lines) + $1))"
@@ -273,9 +268,9 @@ install_deweb() {
 uninstall_node() {
   log "uninstalling node"
   # ask for confirmation
-  echo "This will delete all your node data."
-  echo "Make sure to backup your wallet before proceeding."
-  echo "Are you sure? [y/N]: "
+  log "This will delete all your node data."
+  log "Make sure to backup your wallet before proceeding."
+  log "Are you sure? [y/N]: "
   while true; do
     read -r key
     case $key in
@@ -286,7 +281,7 @@ uninstall_node() {
         return
         ;;
       *)
-        echo "Invalid input ${key@Q}. Are you sure? [y/n]: "
+        log "Invalid input ${key@Q}. Are you sure? [y/n]: "
     esac
   done
   rm -rf "$node_path"
