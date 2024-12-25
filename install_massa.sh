@@ -26,8 +26,9 @@ run_in_proot_distro() {
 }
 
 log() {
-  printf "%s\n" "$@" >> "$logtmp"
-  if ! "$alt_screen"; then
+  if "$alt_screen"; then
+    printf "%s\n" "$@" >> "$logfile"
+  else
     printf "%s\n" "$@"
   fi
 }
@@ -35,8 +36,10 @@ log() {
 # Initialize the terminal to use the alternate screen
 init_altscreen() {
   set +e
+  tmp="$(mktemp -d)"
+  logfile="$tmp/log"
+
   [ ! -f "$logfile" ] && touch "$logfile"
-  [ ! -f "$logtmp" ] && touch "$logtmp"
   # switch to the alternate screen
   declare -g _stty
   _stty="$(stty -g < /dev/tty)"
@@ -55,10 +58,8 @@ drop_altscreen() {
   tput cnorm
   set -e
   echo "Logs:"
-  cat "$logtmp"
-  printf "[%s]\n" "$start_time" >> "$logfile"
-  cat "$logtmp" >> "$logfile"
-  rm "$logtmp"
+  cat "$logfile"
+  rm -rf "$tmp"
   alt_screen=false
 }
 
@@ -219,7 +220,7 @@ menu_loop() {
       "ESC"|"q") exit ;;
     esac
   done
-  drop_altscreen
+  on_exit
   [ "${boxes[1]}" = "X" ] && install_node
   [ "${boxes[2]}" = "X" ] && install_deweb
   [ "${boxes[4]}" = "X" ] && uninstall_node
@@ -277,13 +278,6 @@ uninstall_deweb() {
   log "uninstalling deweb"
 }
 
-data="$HOME/.config/droid.massa"
-
-logfile="$data/log"
-start_time="$(date)"
-logtmp="$data/log$(date +%s)"
-
-[ ! -d "$data" ] && mkdir -p "$data"
 vm_name="droid.massa"
 proot_distro_rootfs="$PREFIX/var/lib/proot-distro/installed-rootfs/$vm_name"
 proot_distro_shared="$HOME/.virtual/proot-distro/$vm_name"
