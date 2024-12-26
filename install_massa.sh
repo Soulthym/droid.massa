@@ -7,7 +7,7 @@ scan_installed_dependencies() {
   declare -g has_proot_distro=false
   declare -g has_node=false
   declare -g has_deweb=false
-  if ! pkg list-installed proot-distro 2>/dev/null | grep -q "proot-distro"; then
+  if ! pkg list-installed proot-distro 2>/dev/null | grep --silent "proot-distro"; then
     missing_termux_deps+=("proot-distro")
   fi
   if [ -d "$proot_distro_rootfs" ]; then
@@ -22,21 +22,21 @@ scan_installed_dependencies() {
 }
 
 run_in_proot_distro() {
-  proot-distro login "$proot_distro_rootfs" -- bash -c "${@@Q}"
+  cmd="${1}"
+  proot-distro login "$vm_name" -- bash -c "$cmd"
 }
 
 log() {
   if "$alt_screen"; then
     printf "%s\n" "$@" >> "$logfile"
   else
-    printf "%s\n" "$@"
+    printf "%s\n" "$@" >&2
   fi
 }
 
 # Initialize the terminal to use the alternate screen
 init_altscreen() {
   set +e
-  tmp="$(mktemp -d)"
   logfile="$tmp/log"
 
   [ ! -f "$logfile" ] && touch "$logfile"
@@ -57,9 +57,11 @@ drop_altscreen() {
   # show the cursor
   tput cnorm
   set -e
-  echo "Logs:"
-  cat "$logfile"
-  rm -rf "$tmp"
+  if [ -s "$logfile" ]; then
+    echo "Logs:"
+    cat "$logfile"
+  fi
+  rm -f "$logfile"
   alt_screen=false
 }
 
@@ -155,12 +157,12 @@ menu_loop() {
     draw_line 8  "${style[5]}   [${boxes[5]}] Uninstall the deweb client$reset"
     waitkey
     case $key in
-      "UP")
+      "UP"|"k")
         style["$pos"]="$shadow"
         pos=$((pos>0?pos-1:0))
         style["$pos"]=""
         ;;
-      "DOWN")
+      "DOWN"|"j")
         style["$pos"]="$shadow"
         pos=$((pos<5?pos+1:5))
         style["$pos"]=""
@@ -242,12 +244,9 @@ install_proot_distro_deps() {
 
 install_proot_distro() {
   log "installing proot-distro"
-  log "${#missing_termux_deps[@]}"
   if [ "${#missing_termux_deps[@]}" -gt 0 ]; then
     install_proot_distro_deps
   fi
-  log "checking proot-distro vm"
-  log "$has_proot_distro"
   if ! $has_proot_distro; then
     log "installing proot-distro vm"
     proot-distro install --override-alias droid.massa ubuntu-oldlts
@@ -256,18 +255,128 @@ install_proot_distro() {
   fi
 }
 
+resolve_latest_release() {
+  project="$1"
+  prefix="$2"
+  curl --location --silent\
+    --header "Accept: application/vnd.github+json" \
+    --header "X-GitHub-Api-Version: 2022-11-28" \
+    "https://api.github.com/repos/massalabs/$project/releases"\
+    | sed --silent "/linux_arm64/{s/^.*\\(${prefix}[0-9]\\+\\(\\.[0-9]\\+\\)\\+\\).*$/\\1/p}" \
+    | sort --version-sort --unique \
+    | tail --lines=1
+}
+
+make_proot_distro_command() {
+  shared=""
+  home="/root"
+  for termux_path in "$proot_distro_shared"/*; do
+    proot_path="$home/${termux_path##*/}"
+    shared+="--bind $termux_path:$proot_path "
+  done
+  executable="$home${1##"$proot_distro_shared"}"
+  printf "proot-distro login %s --bind ~:/termux %s -- bash -c %q" "${vm_name}" "$shared" "$executable"
+}
+
+marker_template="# managed by droid.massa: do not modify this line! @%s"
+write_alias() {
+  alias_name="$1"
+  alias_command="$2"
+  local marker
+  eval "printf -v marker ${marker_template@Q} ${alias_name@Q}"
+  if ! grep --quiet "$marker" "$HOME/.bashrc"; then
+    echo "alias $alias_name=${alias_command@Q} $marker" >> "$HOME/.bashrc"
+  fi
+}
+
+remove_alias() {
+  alias_name="$1"
+  local marker
+  eval "printf -v marker ${marker_template@Q} ${alias_name@Q}"
+  sed --in-place "/^alias $alias_name=.*$marker$/d" "$HOME/.bashrc"
+}
+
 install_node() {
   log "installing node"
   install_proot_distro
+  if $has_node; then
+    log "node is already installed"
+    return
+  fi
+  log "fetching the latest node version"
+  version="$(resolve_latest_release 'massa' 'MAIN\.')"
+  if [ -z "$version" ]; then
+    log "failed to get the latest node version"
+    return
+  fi
+  file_name="massa_${version}_release_linux_arm64.tar.gz"
+  file_url="https://github.com/massalabs/massa/releases/download/$version/$file_name"
+  checksum_url="https://github.com/massalabs/massa/releases/download/$version/checksums.txt"
+  checksum="$(curl --location --silent "$checksum_url" 2>/dev/null | grep "$file_name" | awk '{print $1}')"
+  if [ -z "$checksum" ]; then
+    log "failed to get the checksum for $file_name"
+    return
+  fi
+  run_in_proot_distro "apt update && apt install -y tmux gcc"
+  log "downloading $file_name"
+  curl --location --silent --output "$tmp/$file_name" "$file_url"
+  log "verifying the checksum"
+  file_checksum="$(sha256sum "$tmp/$file_name" | awk '{print $1}')"
+  if [ "$checksum" != "$file_checksum" ]; then
+    log "checksum verification failed"
+    log "expected: ${checksum@Q}"
+    log "found: ${file_checksum@Q}"
+    return
+  fi
+  log "checksum verification passed"
+  log "installing node $version"
+  mkdir -p "$proot_distro_shared"
+  tar -xzf "$tmp/$file_name" -C "$proot_distro_shared"
+  executable="$node_path/run-massa-node.sh"
+  cat > "$executable" <<EOF
+#!/bin/bash
+cd $node_path_in_vm
+tmux new-session -d -s massa
+tmux send-keys -t massa 'cd massa-node' Enter
+tmux send-keys -t massa './massa-node' Enter
+tmux split-window -v -t massa
+tmux send-keys -t massa 'cd massa-client' Enter
+tmux send-keys -t massa './massa-client' Enter
+tmux attach-session -t massa
+EOF
+  chmod +x "$executable"
+  cmd="$(make_proot_distro_command "$executable")"
+  write_alias "massa" "$cmd"
 }
 
 install_deweb() {
   log "installing deweb"
+  install_proot_distro
+  if $has_deweb; then
+    log "deweb is already installed"
+    return
+  fi
+  log "fetching the latest deweb version"
+  version="$(resolve_latest_release 'Deweb' 'v')"
+  log "downloading Deweb $version"
+  file_name="deweb-server_linux_arm64"
+  file_url="https://github.com/massalabs/Deweb/releases/download/$version/$file_name"
+  mkdir -p "$deweb_path"
+  executable="$deweb_path/run-deweb.sh"
+  curl --location --silent --output "$executable" "$file_url"
+  log "installing Deweb $version"
+  chmod +x "$executable"
+  cmd="$(make_proot_distro_command "$executable")"
+  write_alias "deweb" "$cmd"
 }
 
 uninstall_node() {
   log "uninstalling node"
-  # ask for confirmation
+  if ! $has_node; then
+    log "node is not installed"
+    remove_alias "massa"
+    return
+  fi
   log "This will delete all your node data."
   log "Make sure to backup your wallet before proceeding."
   log "Are you sure? [y/N]: "
@@ -285,19 +394,30 @@ uninstall_node() {
     esac
   done
   rm -rf "$node_path"
+  remove_alias "massa"
+  log "node uninstalled"
 }
 
 uninstall_deweb() {
   log "uninstalling deweb"
+  remove_alias "deweb"
+  if ! $has_deweb; then
+    log "deweb is not installed"
+    return
+  fi
   rm -rf "$deweb_path"
+  log "deweb uninstalled"
 }
 
+tmp="$(mktemp -d)"
 vm_name="droid.massa"
 proot_distro_rootfs="$PREFIX/var/lib/proot-distro/installed-rootfs/$vm_name"
 proot_distro_shared="$HOME/.virtual/proot-distro/$vm_name"
 [ ! -d "$proot_distro_shared" ] && mkdir -p "$proot_distro_shared"
-node_path="$proot_distro_shared/node"
+node_path="$proot_distro_shared/massa"
+node_path_in_vm=$'$HOME/massa'
 deweb_path="$proot_distro_shared/deweb"
+deweb_path_in_vm=$'$HOME/deweb'
 declare -g alt_screen=false
 
 scan_installed_dependencies
