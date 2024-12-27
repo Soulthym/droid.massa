@@ -29,7 +29,7 @@ scan_installed_dependencies() {
   declare -g has_node=false
   declare -g has_deweb=false
   if ! pkg list-installed tput 2>/dev/null | grep --silent "tput"; then
-    pkg install ncurses-utils
+    pkg install -y ncurses-utils
   fi
   if ! pkg list-installed proot-distro 2>/dev/null | grep --silent "proot-distro"; then
     missing_termux_deps+=("proot-distro")
