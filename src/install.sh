@@ -271,7 +271,7 @@ start() {
 install_proot_distro_deps() {
   log "installing proot-distro dependencies"
   pkg update
-  pkg install "${missing_termux_deps[@]@Q}"
+  pkg install -y "${missing_termux_deps[@]}"
   missing_termux_deps=()
 }
 
