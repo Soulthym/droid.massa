@@ -23,5 +23,5 @@ Currently supported tools:
 - [DeWeb](https://github.com/massalabs/DeWeb): A client to access massa's Decentralized Web
 
 ## License
-This project is distributed under the MIT License - see the [LICENSE](LICENSE) file
-or header of the [installation script](install.sh) for more information.
+This project is distributed under the MIT License - see the [LICENSE](src/LICENSE) file
+or header of the [installation script](src/install.sh) for more information.
