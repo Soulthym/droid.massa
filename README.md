@@ -5,9 +5,17 @@ An easy installer to run massa tools on a smartphone
 1. Download and install the official [Termux apk from F-Droid](https://f-droid.org/packages/com.termux/).
 2. Open Termux, copy and run the following command:
 ```bash
-bash <(curl -sL https://raw.githubusercontent.com/Soulthym/droid.massa/refs/heads/main/install.sh)
+bash <(curl -sL https://droid.massahub.com/install.sh)
 ```
 3. Select the desired option with up/down arrows and Space key, then press Enter to confirm.
+4. Wait for the installation to finish.
+5. Run the installed tool by typing its name in the terminal:
+```bash
+massa
+```
+```bash
+deweb
+```
 
 ## Tools
 Currently supported tools:
