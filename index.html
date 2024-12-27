@@ -1,0 +1,177 @@
+<!DOCTYPE html>
+
+<head>
+  <title>droid.massa</title>
+  <meta charset="utf-8">
+  <style>
+    body {
+      background-color: #1e0509;
+      color: #eee;
+      font-family: Arial, sans-serif;
+      font-size: 1.5em;
+      margin: 0 auto;
+      float: left;
+    }
+
+    h1,
+    h2 {
+      width: 100%;
+      text-align: center;
+      background-color: #b93242;
+    }
+
+    h1 {
+      margin: 0 0 .5em 0;
+      color: #fff;
+    }
+
+    h2 {
+      color: #ddd;
+    }
+
+    p {
+      padding: 0 1em;
+      color: #999;
+    }
+
+    pre {
+      background-color: #282828;
+      border: .05em solid #ddd;
+      border-radius: .1em;
+      padding: .3em .8em;
+      font-size: 1.5em;
+      display: inline-block;
+      margin: 0;
+      position: relative;
+    }
+
+    code {
+      color: #f8f8f8;
+      float: inline-start;
+    }
+
+    .copy_btn_container {
+      display: inline;
+      float: right;
+      transform: translateX(.25em);
+    }
+
+    .copy_btn_container>* {
+      transition: opacity .2s;
+      background-color: #b93242;
+      color: white;
+      border: none;
+      border-radius: .5em;
+      text-align: center;
+      font-size: .55em;
+      padding: .1em .25em;
+    }
+
+    button.copy_btn {
+      opacity: .4;
+      //transform: translateX(-100%);
+    }
+
+    button.copy_btn:hover {
+      opacity: .8;
+    }
+
+    .toast {
+      display: none;
+      opacity: 0;
+      font-size: .82em;
+      border-radius: .5em;
+      padding: .104em .25em;
+      position: absolute;
+      float: left;
+      transform: translateX(-170%) translateY(5%);
+    }
+
+    a {
+      color: #337bff;
+      text-decoration: none;
+    }
+
+    a:hover {
+      text-decoration: underline;
+    }
+
+    ul {
+      margin: 0 1em;
+    }
+
+    ol {
+      margin: 0 1em;
+    }
+  </style>
+  <script>
+    function copy_to_clipboard(id) {
+      var text = document.getElementById(id).textContent;
+      navigator.clipboard.writeText(text);
+      var toast = document.getElementById(`toast-${id}`);
+      toast.style.display = 'inline';
+      setTimeout(() => {
+        toast.style.opacity = .8;
+        setTimeout(() => {
+          toast.style.opacity = 0;
+          setTimeout(() => {
+            toast.style.display = 'none';
+          }, 200);
+        }, 2000);
+      }, 10);
+    };
+    document.addEventListener('DOMContentLoaded', function () {
+      var install_script = document.getElementById('install-script');
+      install_script.textContent = `bash <(curl -sL ${location.hostname}/install.sh)`;
+      parents = document.getElementsByClassName('copy_on_click');
+      for (var i = 0; i < parents.length; i++) {
+        var parent = parents[i];
+        var target = parent.getElementsByClassName('copy_on_click_content')[0];
+        var button = `<button class="copy_btn" onclick=copy_to_clipboard('${target.id}')><b>Copy</b></button>`;
+        var toast = `<div id="toast-${target.id}" class="toast"><b>Copied</b></div>`;
+        var div = document.createElement('div');
+        div.className = 'copy_btn_container';
+        div.innerHTML = button + toast;
+        parent.innerHTML += div.outerHTML;
+        console.log(parent.innerHTML);
+      }
+    });
+  </script>
+</head>
+<html>
+
+<body>
+  <h1>droid.massa</h1>
+  <p>An easy installer to run massa tools on a smartphone.</p>
+
+  <h2>How to use</h2>
+  <ol>
+    <li>Download and install the official <a href="https://f-droid.org/packages/com.termux/">Termux apk from
+        F-Droid</a>.</li>
+    <li>Open Termux, copy and run the following command:
+      <br>
+      <pre class="copy_on_click"><code id="install-script" class="copy_on_click_content"></code></pre>
+    </li>
+    <li>Select the desired option with up/down arrows and Space key, then press Enter to confirm.</li>
+    <li>Wait for the installation to finish.</li>
+    <li>Run the tool by typing its name in the terminal:</li>
+    <pre class="copy_on_click"><code id="run-script-massa" class="copy_on_click_content">massa</code></pre>
+    <br>
+    <pre class="copy_on_click"><code id="run-script-deweb" class="copy_on_click_content">deweb</code></pre>
+  </ol>
+  <h2>Tools</h2>
+  <p>Currently supported tools:</p>
+  <ul>
+    <li><a href="https://github.com/massalabs/massa">massa</a>: A validator for the massa blockchain</li>
+    <li><a href="https://github.com/massalabs/DeWeb">DeWeb</a>: A client to access massa's Decentralized Web</li>
+  </ul>
+  <h2>License</h2>
+  <p>
+    This project is distributed under the MIT License - see the <a href="./LICENSE">LICENSE</a> file
+    or the header of the <a href="./install.sh">installation script</a> for more information.
+  </p>
+  <h2>Download</h2>
+  <a href="./install.sh">install.sh</a>
+</body>
+
+</html>
