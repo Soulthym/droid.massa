@@ -285,6 +285,7 @@ install_proot_distro() {
     proot-distro install --override-alias droid.massa ubuntu-oldlts
     log "updating proot-distro vm"
     run_in_proot_distro "apt update && apt upgrade -y"
+    has_proot_distro=true
   fi
 }
 
