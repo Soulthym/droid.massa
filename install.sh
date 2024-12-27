@@ -239,10 +239,19 @@ menu_loop() {
     esac
   done
   on_exit
+  declare -g -a instructions=()
   [ "${boxes[1]}" = "X" ] && install_node
   [ "${boxes[2]}" = "X" ] && install_deweb
   [ "${boxes[4]}" = "X" ] && uninstall_node
   [ "${boxes[5]}" = "X" ] && uninstall_deweb
+  if [ "${boxes[1]}" = "X" ] || [ "${boxes[2]}" = "X" ]; then
+    log "Installation complete"
+    log
+    log "Tutorial:"
+    for instruction in "${instructions[@]}"; do
+      echo "$instruction"
+    done
+  fi
 }
 
 on_exit() {
@@ -300,6 +309,14 @@ make_proot_distro_command() {
 }
 
 marker_template="# managed by droid.massa: do not modify this line! @%s"
+
+log_run_with() {
+  $2 && already=" already" || already=""
+  log "$1$already installed"
+  instructions+=("$1$already installed")
+  instructions+=("run it with the command: $1")
+}
+
 write_alias() {
   alias_name="$1"
   alias_command="$2"
@@ -307,6 +324,10 @@ write_alias() {
   eval "printf -v marker ${marker_template@Q} ${alias_name@Q}"
   if ! grep --quiet "$marker" "$HOME/.bashrc"; then
     echo "alias $alias_name=${alias_command@Q} $marker" >> "$HOME/.bashrc"
+    source "$HOME/.bashrc"
+    log_run_with "$alias_name" false
+  else
+    log_run_with "$alias_name" true
   fi
 }
 
@@ -321,7 +342,7 @@ install_node() {
   log "installing node"
   install_proot_distro
   if $has_node; then
-    log "node is already installed"
+    log_run_with "massa" true
     return
   fi
   log "fetching the latest node version"
@@ -374,7 +395,7 @@ install_deweb() {
   log "installing deweb"
   install_proot_distro
   if $has_deweb; then
-    log "deweb is already installed"
+    log_run_with "deweb" true
     return
   fi
   log "fetching the latest deweb version"
@@ -438,7 +459,6 @@ proot_distro_shared="$HOME/.virtual/proot-distro/$vm_name"
 node_path="$proot_distro_shared/massa"
 node_path_in_vm=$'$HOME/massa'
 deweb_path="$proot_distro_shared/deweb"
-deweb_path_in_vm=$'$HOME/deweb'
 declare -g alt_screen=false
 
 scan_installed_dependencies
