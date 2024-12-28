@@ -254,6 +254,7 @@ menu_loop() {
     for instruction in "${instructions[@]}"; do
       echo "$instruction"
     done
+    log "Restart termux to apply the changes (type 'exit' and press ENTER, then open termux again)"
   fi
 }
 

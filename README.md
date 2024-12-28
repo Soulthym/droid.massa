@@ -10,7 +10,8 @@ bash <(curl -sL https://droid.deweb.half-red.net/install.sh)
 ```
 3. Select the desired option with up/down arrows and Space key, then press Enter to confirm.
 4. Wait for the installation to finish.
-5. Run the installed tool by typing its name in the terminal:
+5. Restart termux to apply the changes (type 'exit' and press ENTER, then open termux again)
+6. Run the installed tool by typing its name in the terminal:
 ```bash
 massa
 ```
